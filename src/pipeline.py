@@ -10,7 +10,7 @@ import torch.multiprocessing as mp
 import chess
 
 if __name__=="__main__":
-    for iteration in range(10):
+    for iteration in range(30):
         # Runs MCTS
         net_to_play="current_net_trained8_iter1.pth.tar"
         mp.set_start_method("spawn",force=True)
