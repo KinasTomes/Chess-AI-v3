@@ -231,7 +231,7 @@ def MCTS_self_play(chessnet, num_games, cpu):
             policy = get_policy(root)
             dataset.append([board_state, policy])
             # print(current_board)
-            print(f"Move count: {current_board.fullmove_number}")
+            # print(f"Move count: {current_board.fullmove_number}")
             # print()
             
             if current_board.is_checkmate():
