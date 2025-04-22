@@ -248,7 +248,8 @@ def train(net, dataset_shard, epoch_start=0, epoch_stop=200, process_id=0, gpu_i
         # Calculate average loss for the epoch
         avg_loss_this_epoch = total_loss_epoch / num_batches if num_batches > 0 else 0
         losses_per_epoch.append(avg_loss_this_epoch)
-        print(f"Proc {process_id} Epoch {epoch + 1} finished. Avg Loss: {avg_loss_this_epoch:.4f}")
+        if epoch >= 100: # Only print after 100 epochs
+            print(f"Proc {process_id} Epoch {epoch + 1} finished. Avg Loss: {avg_loss_this_epoch:.4f}")
 
         # Step the scheduler after each epoch
         scheduler.step()
