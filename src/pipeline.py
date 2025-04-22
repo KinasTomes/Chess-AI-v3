@@ -9,25 +9,39 @@ import torch
 import torch.multiprocessing as mp
 import chess
 
+def get_gpu_id(process_id, num_gpus):
+    return process_id % num_gpus
+
 if __name__=="__main__":
+    # Check available GPUs
+    num_gpus = torch.cuda.device_count()
+    print(f"Number of available GPUs: {num_gpus}")
+    
     for iteration in range(20):
         # Runs MCTS
         net_to_play="current_net_trained8_iter1.pth.tar"
         mp.set_start_method("spawn",force=True)
-        net = ChessNet()
-        cuda = torch.cuda.is_available()
-        if cuda:
-            net.cuda()
-        net.share_memory()
-        net.eval()
+        
+        # Create one network per GPU
+        nets = []
+        for gpu_id in range(num_gpus):
+            net = ChessNet()
+            if torch.cuda.is_available():
+                net.cuda(gpu_id)
+            net.share_memory()
+            net.eval()
+            current_net_filename = os.path.join("./model_data/", net_to_play)
+            checkpoint = torch.load(current_net_filename, map_location=f'cuda:{gpu_id}')
+            net.load_state_dict(checkpoint['state_dict'])
+            nets.append(net)
+            
         print("Starting MCTS self-play...")
-        current_net_filename = os.path.join("./model_data/",\
-                                        net_to_play)
-        checkpoint = torch.load(current_net_filename)
-        net.load_state_dict(checkpoint['state_dict'])
         processes1 = []
-        for i in range(6):
-            p1 = mp.Process(target=MCTS_self_play,args=(net,50,i))
+        num_processes = 6  # Total number of processes
+        
+        for i in range(num_processes):
+            gpu_id = get_gpu_id(i, num_gpus)
+            p1 = mp.Process(target=MCTS_self_play, args=(nets[gpu_id], 50, i, gpu_id))
             p1.start()
             processes1.append(p1)
         for p1 in processes1:
@@ -77,24 +91,30 @@ if __name__=="__main__":
         
         print("Starting neural network training...")
         mp.set_start_method("spawn",force=True)
-        net = ChessNet()
-        cuda = torch.cuda.is_available()
-        if cuda:
-            net.cuda()
-        net.share_memory()
-        net.train()
-        current_net_filename = os.path.join("./model_data/",\
-                                        net_to_train)
-        checkpoint = torch.load(current_net_filename)
-        net.load_state_dict(checkpoint['state_dict'])
+        
+        # Create one network per GPU for training
+        nets = []
+        for gpu_id in range(num_gpus):
+            net = ChessNet()
+            if torch.cuda.is_available():
+                net.cuda(gpu_id)
+            net.share_memory()
+            net.train()
+            current_net_filename = os.path.join("./model_data/", net_to_train)
+            checkpoint = torch.load(current_net_filename, map_location=f'cuda:{gpu_id}')
+            net.load_state_dict(checkpoint['state_dict'])
+            nets.append(net)
         
         processes2 = []
-        for i in range(6):
-            p2 = mp.Process(target=train,args=(net,datasets,0,200,i))
+        num_processes = 6  # Total number of processes
+        
+        for i in range(num_processes):
+            gpu_id = get_gpu_id(i, num_gpus)
+            p2 = mp.Process(target=train, args=(nets[gpu_id], datasets, 0, 200, i, gpu_id))
             p2.start()
             processes2.append(p2)
         for p2 in processes2:
             p2.join()
-        # save results
-        torch.save({'state_dict': net.state_dict()}, os.path.join("./model_data/",\
-                                        save_as))
+            
+        # Save results - we save the last GPU's model state
+        torch.save({'state_dict': nets[-1].state_dict()}, os.path.join("./model_data/", save_as))

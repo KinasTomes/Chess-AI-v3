@@ -207,7 +207,11 @@ def save_as_pickle(filename, data):
     with open(completeName, 'wb') as output:
         pickle.dump(data, output)
 
-def MCTS_self_play(chessnet, num_games, cpu):
+def MCTS_self_play(net, num_games, cpu, gpu_id=0):
+    # Set the GPU device for this process
+    if torch.cuda.is_available():
+        torch.cuda.set_device(gpu_id)
+    
     for idxx in range(num_games):
         current_board = chess.Board()
         dataset = []  # to get state, policy, value for neural network training
@@ -226,7 +230,7 @@ def MCTS_self_play(chessnet, num_games, cpu):
                 
             states.append(current_fen)
             board_state = copy.deepcopy(ed.encode_board(current_board))
-            best_move, root = UCT_search(current_board, 777, chessnet)
+            best_move, root = UCT_search(current_board, 777, net)
             current_board = do_decode_n_move_pieces(current_board, best_move)
             policy = get_policy(root)
             dataset.append([board_state, policy])
