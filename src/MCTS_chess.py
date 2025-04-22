@@ -200,9 +200,8 @@ def get_policy(root):
         policy[move] = node.visits / root.visits
     return policy
 
-def save_as_pickle(filename, data):
-    save_dir = "./datasets/iter2/"
-    os.makedirs(save_dir, exist_ok=True)  # Create directory if it doesn't exist
+def save_as_pickle(filename, data, save_dir=r"./datasets/current_iter/"):
+    os.makedirs(save_dir, exist_ok=True)
     completeName = os.path.join(save_dir, filename)
     with open(completeName, 'wb') as output:
         pickle.dump(data, output)
