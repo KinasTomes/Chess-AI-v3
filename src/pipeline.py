@@ -36,23 +36,44 @@ if __name__=="__main__":
         # Runs Net training
         net_to_train="current_net_trained8_iter1.pth.tar"; save_as="current_net_trained8_iter1.pth.tar"
         # gather data
-        data_path = "./datasets/iter0/"
         datasets = []
-        for idx,file in enumerate(os.listdir(data_path)):
-            filename = os.path.join(data_path,file)
-            with open(filename, 'rb') as fo:
-                datasets.extend(pickle.load(fo, encoding='bytes'))
-        data_path = "./datasets/iter1/"
-        for idx,file in enumerate(os.listdir(data_path)):
-            filename = os.path.join(data_path,file)
-            with open(filename, 'rb') as fo:
-                datasets.extend(pickle.load(fo, encoding='bytes'))
-        data_path = "./datasets/iter2/"
-        for idx,file in enumerate(os.listdir(data_path)):
-            filename = os.path.join(data_path,file)
-            with open(filename, 'rb') as fo:
-                datasets.extend(pickle.load(fo, encoding='bytes'))
-        datasets = np.array(datasets)
+        
+        # Function to validate dataset entry
+        def validate_entry(entry):
+            if len(entry) != 3:  # Should have state, policy, value
+                return False
+            state, policy, value = entry
+            if state.shape != (8, 8, 22):  # Check state shape
+                return False
+            if len(policy) != 4672:  # Check policy vector size
+                return False
+            if not isinstance(value, (int, float)):  # Check value is scalar
+                return False
+            return True
+            
+        # Load and validate data from each iteration
+        for iter_num in range(3):  # Loading from iter0, iter1, iter2
+            data_path = f"./datasets/iter{iter_num}/"
+            if not os.path.exists(data_path):
+                print(f"Warning: {data_path} does not exist, skipping...")
+                continue
+                
+            for idx, file in enumerate(os.listdir(data_path)):
+                filename = os.path.join(data_path, file)
+                with open(filename, 'rb') as fo:
+                    data = pickle.load(fo, encoding='bytes')
+                    # Validate each entry before adding
+                    valid_data = [entry for entry in data if validate_entry(entry)]
+                    if len(valid_data) != len(data):
+                        print(f"Warning: Filtered {len(data) - len(valid_data)} invalid entries from {filename}")
+                    datasets.extend(valid_data)
+        
+        if not datasets:
+            print("Error: No valid training data found!")
+            continue
+            
+        print(f"Total valid training examples: {len(datasets)}")
+        datasets = np.array(datasets, dtype=object)
         
         print("Starting neural network training...")
         mp.set_start_method("spawn",force=True)
